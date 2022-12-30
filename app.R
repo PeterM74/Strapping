@@ -1,33 +1,25 @@
+library(DBI)
+library(RMariaDB)
 library(geosphere)
 library(shiny)
 library(shinyMobile)
+library(tidyverse)
 
 # Define unchanging constants for permanent load
-k <- list(
-  ColourTheme = "#673ab7",
-  
-  ## Anytime Fitness locations for tracking purposes.
-  ## Numeric vector of length 3: Long, Lat, acceptable distance between points for geoloc in m
-  ## TODO: Dist calc for later: geosphere::distm(x = matrix(c(k$AFLocations$Long, k$AFLocations$Lat), 
-  ##        byrow = FALSE, ncol = 2), y = rev(c(-33.67405556834981, 150.92179497401867)), fun = distHaversine)
-  AFLocations = tibble::tribble(
-    ~Centre, ~Long, ~Lat, ~AcceptableDist,
-    "Rouse Hill North", 150.9201, -33.67351, 1000,
-    "Riverstone", 150.8603, -33.67693, 1500,
-    "St Leonards", 151.1952, -33.82288, 1250,
-    "Rouse Hill Town Centre", 150.9265, -33.68969, 1000,
-    "Marsden Park", 150.8421, -33.72165, 1500,
-    "Richmond", 150.7513, -33.59600, 1500
-  )
-)
+Settings <- fGetSettings()
 
-# Define UI for application that draws a histogram
+# Connect to DB
+DBCon <- fBuildConnection(Settings)
+
+
+
+# Define UI for application that draws a histogram -----
 ui <- shinyMobile::f7Page(
   
   title = "Strapping",
   
   options = list(dark = FALSE,
-                 color = k$ColourTheme),  # TODO: COLOR DESIGN OF TABS
+                 color = Settings$ColourTheme),  # TODO: COLOR DESIGN OF TABS
   
   
   # Core app
@@ -71,7 +63,7 @@ ui <- shinyMobile::f7Page(
         shiny::tagList(
 
           shiny::tags$u(shinyMobile::f7Padding(shiny::h2("Active workouts", 
-                                                         style = paste0("color: ", k$ColourTheme), 
+                                                         style = paste0("color: ", Settings$ColourTheme), 
                                                          .noWS = "after"), side = "left")),
           shiny::uiOutput("HomePageActiveWorkoutUI")
         ),
@@ -80,7 +72,7 @@ ui <- shinyMobile::f7Page(
         shiny::tagList(
           
           shiny::tags$u(shinyMobile::f7Padding(shiny::h2("Previous workouts", 
-                                                         style = paste0("color: ", k$ColourTheme), 
+                                                         style = paste0("color: ", Settings$ColourTheme), 
                                                          .noWS = "after"), side = "left")),
           shiny::uiOutput("HomePagePreviousWorkoutUI")
         )
@@ -100,7 +92,7 @@ ui <- shinyMobile::f7Page(
         shiny::tagList(
           
           shiny::tags$u(shinyMobile::f7Padding(shiny::h2("Active workouts", 
-                                                         style = paste0("color: ", k$ColourTheme), 
+                                                         style = paste0("color: ", Settings$ColourTheme), 
                                                          .noWS = "after"), side = "left")),
           shiny::uiOutput("WorkoutPageUI")
         ),
@@ -121,7 +113,11 @@ ui <- shinyMobile::f7Page(
   
 )
 
-# Define server logic required to draw a histogram
+
+
+
+
+# Define server logic required to draw a histogram -----
 server <- function(input, output, session) {
   
   # User authentication - TODO -----
@@ -174,7 +170,7 @@ server <- function(input, output, session) {
         shinyMobile::f7Padding(
           shiny::actionLink(inputId = "StartNewWorkoutButton",
                             label = "Start new workout",
-                            icon = shinyMobile::f7Icon("plus_app_fill", color = k$ColourTheme)),
+                            icon = shinyMobile::f7Icon("plus_app_fill", color = Settings$ColourTheme)),
           side = "left"
         )
       )
@@ -216,7 +212,7 @@ server <- function(input, output, session) {
       shiny::tagList(
         
         shiny::tags$u(shinyMobile::f7Padding(shiny::h2("Active workouts", 
-                                                       style = paste0("color: ", k$ColourTheme), 
+                                                       style = paste0("color: ", Settings$ColourTheme), 
                                                        .noWS = "after"), side = "left")),
         # Add purrr for number of workouts active
         shinyMobile::f7Card()
@@ -227,7 +223,7 @@ server <- function(input, output, session) {
       # No workouts are active
       shiny::tagList(
         shiny::tags$u(shinyMobile::f7Padding(shiny::h2("Choose a workout to start:", 
-                                                       style = paste0("color: ", k$ColourTheme), 
+                                                       style = paste0("color: ", Settings$ColourTheme), 
                                                        .noWS = "after"), side = "left"))
       )
     }
@@ -246,7 +242,7 @@ server <- function(input, output, session) {
                                               shiny::actionLink(inputId = "ActivateSavedWorkout",
                                                                 label = "Start this workout",
                                                                 icon = shinyMobile::f7Icon("arrowshape_turn_up_right_circle_fill", 
-                                                                                           color = k$ColourTheme)),
+                                                                                           color = Settings$ColourTheme)),
                                               side = "horizontal"
                                             )
                                           ))
@@ -259,7 +255,7 @@ server <- function(input, output, session) {
                                 shiny::actionLink(inputId = "CreateNewWorkout",
                                                   label = "Build workout",
                                                   icon = shinyMobile::f7Icon("plus_square_fill_on_square_fill", 
-                                                                             color = k$ColourTheme)),
+                                                                             color = Settings$ColourTheme)),
                                 side = "horizontal"
                               )))
         
