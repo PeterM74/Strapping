@@ -9,7 +9,7 @@ library(tidyverse)
 Settings <- fGetSettings()
 
 # Connect to DB
-DBCon <- fBuildConnection(Settings)
+DBCon <- fBuildDBConnection(Settings)
 
 
 

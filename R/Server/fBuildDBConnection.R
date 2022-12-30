@@ -1,4 +1,4 @@
-fBuildConnection <- function(Settings) {
+fBuildDBConnection <- function(Settings) {
   
   RMariaDB::dbConnect(RMariaDB::MariaDB(),
                       dbname = Settings$DBName,
