@@ -3,6 +3,7 @@ library(RMariaDB)
 library(geosphere)
 library(shiny)
 library(shinyMobile)
+library(shinyMatrix)
 library(tidyverse)
 
 # Load functions
@@ -368,23 +369,9 @@ server <- function(input, output, session) {
   output$NewWorkoutPageUI <- shiny::renderUI({
     
     # Create inputs
-    # NumberOfInputSections <- CreateNewWorkoutAddExerciseBtn()
     InputSection <- purrr::map(1:CreateNewWorkoutAddExerciseBtn(),
                                function(ExerciseCounter) {
                                  
-      SetCounterBtn <- shiny::eventReactive(input[[paste0("SetCounter", ExerciseCounter)]], {
-
-        if (is.na(input[[paste0("SetCounter", ExerciseCounter)]]) | is.nan(input[[paste0("SetCounter", ExerciseCounter)]])) {
-          
-          1
-          
-        } else {
-          
-          input[[paste0("SetCounter", ExerciseCounter)]]
-          
-        }
-
-      })
        
       shinyMobile::f7Block(inset = TRUE, strong = TRUE,
                            shinyMobile::f7BlockHeader(paste("Exercise", ExerciseCounter)),
@@ -396,24 +383,12 @@ server <- function(input, output, session) {
                                                    label = "",
                                                    value = "",
                                                    resize = TRUE,
-                                                   placeholder = paste0("Insert workout details here")),
-                           # get(paste0("SetCounterBtn", ExerciseCounter))(),
-                           purrr::map(1:SetCounterBtn(), # shiny::reactive(input[[paste0("SetCounter", ExerciseCounter)]]),
-                                      function(SetCounter, ExerciseCounter) {
-
-                                        shiny::numericInput(paste0(ExerciseCounter, "RepCount", SetCounter),
-                                                            label = "",
-                                                            value = 6,
-                                                            min = 1, step = 1, width = "20%")
-
-                                      }, ExerciseCounter = ExerciseCounter),
-                           shinyMobile::f7Stepper(paste0("SetCounter", ExerciseCounter),
-                                                  label = "",
-                                                  min = 1,
-                                                  max = 10,
-                                                  value = 1,
-                                                  rounded = TRUE,
-                                                  color = Settings$ColourTheme))
+                                                   placeholder = paste0("Insert exercise details here")),
+                           shinyMatrix::matrixInput(paste0("ExerciseMatrix", ExerciseCounter),
+                                                    value = matrix("", nrow = 3, ncol = 2, byrow = TRUE,
+                                                                   dimnames = list(1:3, Settings$TableColNames[1:2])),
+                                                    rows = list(extend = TRUE, delete = TRUE, names = TRUE),
+                                                    cols = list(names = TRUE, extend = TRUE, delta = 0)))
                                  
                                })
 

@@ -21,6 +21,7 @@ fGetSettings <- function() {
   
   # Aesthetic information -----
   Settings$ColourTheme = "#673ab7"
+  Settings$TableColNames <- c("Rep", "Kg", "Complete")
   
   
   
