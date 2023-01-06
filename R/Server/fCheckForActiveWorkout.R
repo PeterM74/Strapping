@@ -6,28 +6,31 @@ fCheckForActiveWorkout <- function(User, DBCon, Settings) {
   ActiveWorkouts <- DBCon %>%
     dplyr::tbl(Settings$DBTableName$Active) %>%
     dplyr::filter(UID == User) %>%
+    dplyr::select(SessionID) %>%
     dplyr::collect()
   
-  if (nrow(ActiveWorkouts) == 0) {
-    
-    # No active workouts
-    return(FALSE)
-    
-  } else {
-    
-    # Active workout detected - return information
-    ActiveWorkoutSummary <- ActiveWorkouts %>%
-      dplyr::left_join(y = DBCon %>%
-                         dplyr::tbl(Settings$DBTableName$Sessions) %>%
-                         dplyr::filter(UID == User & SessionID %in% ActiveWorkouts$SessionID) %>%
-                         dplyr::select(SessionID, DateTime) %>%
-                         dplyr::collect(),
-                       by = "SessionID") %>%
-      dplyr::distinct(WorkoutType, DateTime) %>%
-      dplyr::mutate(DateTime = format(DateTime, format = "%y-%m-%d %H:%M"))
-    
-    return(ActiveWorkoutSummary)
-    
-  }
+  return(nrow(ActiveWorkouts) != 0)
+  
+  # if (nrow(ActiveWorkouts) == 0) {
+  #   
+  #   # No active workouts
+  #   return(FALSE)
+  #   
+  # } else {
+  #   
+  #   # Active workout detected - return information
+  #   ActiveWorkoutSummary <- ActiveWorkouts %>%
+  #     dplyr::left_join(y = DBCon %>%
+  #                        dplyr::tbl(Settings$DBTableName$Sessions) %>%
+  #                        dplyr::filter(UID == User & SessionID %in% ActiveWorkouts$SessionID) %>%
+  #                        dplyr::select(SessionID, DateTime) %>%
+  #                        dplyr::collect(),
+  #                      by = "SessionID") %>%
+  #     dplyr::distinct(WorkoutType, DateTime) %>%
+  #     dplyr::mutate(DateTime = format(DateTime, format = "%y-%m-%d %H:%M"))
+  #   
+  #   return(ActiveWorkoutSummary)
+  #   
+  # }
   
 }

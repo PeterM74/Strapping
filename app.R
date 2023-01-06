@@ -5,6 +5,11 @@ library(shiny)
 library(shinyMobile)
 library(tidyverse)
 
+# Load functions
+purrr::map(list.files(path = "./R/", pattern = ".R$", recursive = TRUE, full.names = TRUE),
+           source) %>%
+  invisible()
+
 # Define unchanging constants for permanent load
 Settings <- fGetSettings()
 
@@ -91,15 +96,76 @@ ui <- shinyMobile::f7Page(
         # Active workouts section
         shiny::tagList(
           
-          shiny::tags$u(shinyMobile::f7Padding(shiny::h2("Active workouts", 
-                                                         style = paste0("color: ", Settings$ColourTheme), 
-                                                         .noWS = "after"), side = "left")),
           shiny::uiOutput("WorkoutPageUI")
+          
         ),
         
       ),
       
-      # Third tab - Progress -----
+      ## Third tab (hidden) - create new workout -----
+      shinyMobile::f7Tab(
+        
+        tabName = "NewWorkout",
+        title = "New Workout",
+        icon = shinyMobile::f7Icon("star_fill"),
+        hidden = TRUE,
+        
+        
+        # Info help page
+        shiny::div(shinyMobile::f7Icon("info_circle"),
+                   `data-sheet` = "#CreateNewWorkoutInfoSheet",
+                   class = "sheet-open",
+                   style = "float: right; margin: 2% 2% 0 0;"),
+        shinyMobile::f7Sheet(id = "CreateNewWorkoutInfoSheet",
+                             label = "Help",
+                             orientation = "bottom",
+                             swipeToClose = TRUE,
+                             swipeToStep = FALSE,
+                             shinyMobile::f7Padding(
+                               shiny::p("TODO: HELP INFO TO GO HERE")
+                             )),
+        
+        # Title
+        shiny::tags$u(shinyMobile::f7Padding(shiny::h2("Create new workout", 
+                                                       style = paste0("color: ", Settings$ColourTheme), 
+                                                       .noWS = "after"),
+                                             side = "horizontal")),
+        
+        # Workout name
+        shinyMobile::f7Padding(shinyMobile::f7Text("NewWorkoutName",
+                                                   label = "",
+                                                   value = "",
+                                                   placeholder = "Name workout"),
+                               side = "horizontal"),
+        
+        # Generate input programmatically
+        shiny::uiOutput("NewWorkoutPageUI"),
+        
+        # Add exercise button
+        shiny::div(shinyMobile::f7Button(inputId = "CreateNewWorkoutAddExerciseBtn",
+                                         label = "Add new exercise",
+                                         color = Settings$ColourTheme,
+                                         rounded = TRUE),
+                   style = paste0("margin: 0 auto; width: 50%")),
+        
+        # Save/cancel button
+        shinyMobile::f7Segment(
+          container = "row",
+          shinyMobile::f7Button(inputId = "CreateNewWorkoutSaveBtn",
+                                label = "Save",
+                                fill = FALSE,
+                                color = Settings$ColourTheme,
+                                rounded = TRUE),
+          shinyMobile::f7Button(inputId = "CreateNewWorkoutCancelBtn",
+                                label = "Cancel",
+                                fill = FALSE,
+                                color = Settings$ColourTheme,
+                                rounded = TRUE)
+        )
+        
+      ),
+      
+      # Fourth tab - Progress -----
       shinyMobile::f7Tab(
         
         tabName = "Progress",
@@ -122,7 +188,7 @@ server <- function(input, output, session) {
   
   # User authentication - TODO -----
   ## For now based on GET parameter called 'User'
-  output$UserID <- shiny::renderText({
+  UserID <- shiny::reactive({
     
     Query <- parseQueryString(session$clientData$url_search)
     if (!is.null(Query[['User']])) {
@@ -134,39 +200,46 @@ server <- function(input, output, session) {
     return(UserID)
     
   })
+    
+  output$UserID <- shiny::renderText({UserID()})
+  
+  
   
   # Detect active workout - TODO -----
   ## Eventual dynamic list contents, but Status always set
-  ActiveWorkout <- list(
-    Status = FALSE
-  )
+  ActiveWorkout <- list()
+  ActiveWorkout$Status <- shiny::reactive({
+    
+    CheckForTabChange <- input$tabs
+    fCheckForActiveWorkout(UserID(), DBCon, Settings)
+    
+  })
+  ActiveWorkout$Table <- shiny::reactive({
+    
+    if (ActiveWorkout$Status()) {
+      
+      fActiveWorkoutTable(UserID(), DBCon, Settings)
+      
+    } else {
+      
+      FALSE
+      
+    }
+    
+  })
   
   # Home page tab output -----
   ## Homepage active workout detection section
   output$HomePageActiveWorkoutUI <- shiny::renderUI({
     
-    if (ActiveWorkout$Status) {
+    if (ActiveWorkout$Status()) {
       
       # Add purrr for number of workouts active
       shinyMobile::f7Card()
       
     } else {
       # No workouts are active
-      ## TODO: can't seem to change tabs with hyperlink - using fab button instead
       shiny::tagList(
-        # Option 1: Plain text with icon - hyperlink not working
-        ## shinyMobile::f7Padding(
-        ##   shiny::a(href="#Workout", class="tab-link",
-        ##            shiny::tags$span(shinyMobile::f7Icon("plus_app_fill", color = k$ColourTheme),
-        ##                            shiny::tags$b("Start a new workout"), style = paste0("color: ", k$ColourTheme))),
-        ##   side = "left")
-        # Option2: action button styled to the left
-        ## shiny::div(shinyMobile::f7Button(inputId = "StartNewWorkoutButton",
-        ##                                  label = "+ Start new workout",
-        ##                                  rounded = TRUE),
-        ##            style = "width: 60%; position = absolute; left: 0px;",
-        ##            class = " padding-left")
-        # Option3: actionlink, no f7 component
         shinyMobile::f7Padding(
           shiny::actionLink(inputId = "StartNewWorkoutButton",
                             label = "Start new workout",
@@ -204,12 +277,10 @@ server <- function(input, output, session) {
   
   output$WorkoutPageUI <- shiny::renderUI({
     
-    # TODO: if selected workout is true, generate ui for output
-    
     ## Active workout detection section
-    if (ActiveWorkout$Status) {
+    if (ActiveWorkout$Status()) {
       
-      shiny::tagList(
+      ActiveWorkoutSection <- shiny::tagList(
         
         shiny::tags$u(shinyMobile::f7Padding(shiny::h2("Active workouts", 
                                                        style = paste0("color: ", Settings$ColourTheme), 
@@ -221,7 +292,7 @@ server <- function(input, output, session) {
       
     } else {
       # No workouts are active
-      shiny::tagList(
+      ActiveWorkoutSection <- shiny::tagList(
         shiny::tags$u(shinyMobile::f7Padding(shiny::h2("Choose a workout to start:", 
                                                        style = paste0("color: ", Settings$ColourTheme), 
                                                        .noWS = "after"), side = "left"))
@@ -231,7 +302,7 @@ server <- function(input, output, session) {
     
     if (!purrr::is_empty(WorkoutTypes)) {
       
-      shiny::tagList(
+      ExistingWorkoutListSection <- shiny::tagList(
         purrr::imap(WorkoutTypes,
                     function(WorkoutData, WorkoutName) {
                       
@@ -247,24 +318,125 @@ server <- function(input, output, session) {
                                             )
                                           ))
                       
-                    }),
-        
-        shinyMobile::f7Card(title = "Create new workout",
-                            shiny::tagList(
-                              shinyMobile::f7Padding(
-                                shiny::actionLink(inputId = "CreateNewWorkout",
-                                                  label = "Build workout",
-                                                  icon = shinyMobile::f7Icon("plus_square_fill_on_square_fill", 
-                                                                             color = Settings$ColourTheme)),
-                                side = "horizontal"
-                              )))
+                    })
         
       )
       
+    } else {
+      
+      ExistingWorkoutListSection <- NULL
+      
     }
+    
+    BuildNewWorkoutCard <- shinyMobile::f7Card(title = "Create new workout",
+                        shiny::tagList(
+                          shinyMobile::f7Padding(
+                            shiny::actionLink(inputId = "CreateNewWorkout",
+                                              label = "Build workout",
+                                              icon = shinyMobile::f7Icon("plus_square_fill_on_square_fill", 
+                                                                         color = Settings$ColourTheme)),
+                            side = "horizontal"
+                          )))
+    
+    
+    # Return workout ui
+    shiny::tagList(
+      
+      ActiveWorkoutSection,
+      ExistingWorkoutListSection,
+      BuildNewWorkoutCard
+      
+    )
     
   
   
+  })
+  
+  ### Start new workout link activated
+  shiny::observeEvent(input$CreateNewWorkout, {
+    shinyMobile::updateF7Tabs(id = "tabs", selected = "NewWorkout")
+  })
+  
+  
+  
+  # Create new workout page UI
+  CreateNewWorkoutAddExerciseBtn <- shiny::eventReactive(input$CreateNewWorkoutAddExerciseBtn, {
+    
+      input$CreateNewWorkoutAddExerciseBtn
+    
+  })
+  output$NewWorkoutPageUI <- shiny::renderUI({
+    
+    # Create inputs
+    # NumberOfInputSections <- CreateNewWorkoutAddExerciseBtn()
+    InputSection <- purrr::map(1:CreateNewWorkoutAddExerciseBtn(),
+                               function(ExerciseCounter) {
+                                 
+      SetCounterBtn <- shiny::eventReactive(input[[paste0("SetCounter", ExerciseCounter)]], {
+
+        if (is.na(input[[paste0("SetCounter", ExerciseCounter)]]) | is.nan(input[[paste0("SetCounter", ExerciseCounter)]])) {
+          
+          1
+          
+        } else {
+          
+          input[[paste0("SetCounter", ExerciseCounter)]]
+          
+        }
+
+      })
+       
+      shinyMobile::f7Block(inset = TRUE, strong = TRUE,
+                           shinyMobile::f7BlockHeader(paste("Exercise", ExerciseCounter)),
+                           shinyMobile::f7Text(paste0("ExerciseName", ExerciseCounter),
+                                               label = "",
+                                               value = "",
+                                               placeholder = paste0("Exercise name")),
+                           shinyMobile::f7TextArea(paste0("ExerciseInfo", ExerciseCounter),
+                                                   label = "",
+                                                   value = "",
+                                                   resize = TRUE,
+                                                   placeholder = paste0("Insert workout details here")),
+                           # get(paste0("SetCounterBtn", ExerciseCounter))(),
+                           purrr::map(1:SetCounterBtn(), # shiny::reactive(input[[paste0("SetCounter", ExerciseCounter)]]),
+                                      function(SetCounter, ExerciseCounter) {
+
+                                        shiny::numericInput(paste0(ExerciseCounter, "RepCount", SetCounter),
+                                                            label = "",
+                                                            value = 6,
+                                                            min = 1, step = 1, width = "20%")
+
+                                      }, ExerciseCounter = ExerciseCounter),
+                           shinyMobile::f7Stepper(paste0("SetCounter", ExerciseCounter),
+                                                  label = "",
+                                                  min = 1,
+                                                  max = 10,
+                                                  value = 1,
+                                                  rounded = TRUE,
+                                                  color = Settings$ColourTheme))
+                                 
+                               })
+
+    
+    # Return object
+    shiny::tagList(
+      
+      InputSection
+      
+    )
+    
+  })
+  
+  shiny::observeEvent(input$CreateNewWorkoutSaveBtn, {
+    
+    # TODO: Check workout name is unique for user
+    
+  })
+  
+  shiny::observeEvent(input$CreateNewWorkoutCancelBtn, {
+    
+    shinyMobile::updateF7Tabs(id = "tabs", selected = "Workout")
+    
   })
     
   
