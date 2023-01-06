@@ -389,16 +389,16 @@ server <- function(input, output, session) {
   MatrixDefaultTemplate <- matrix("", nrow = 3, ncol = 2, byrow = TRUE,
                                   dimnames = list(1:3, Settings$TableColNames[1:2]))
   CreateNewWorkoutTempSaveState <- shiny::reactiveValues(
-    Exc1 = MatrixDefaultTemplate,
-    Exc2 = MatrixDefaultTemplate,
-    Exc3 = MatrixDefaultTemplate,
-    Exc4 = MatrixDefaultTemplate,
-    Exc5 = MatrixDefaultTemplate,
-    Exc6 = MatrixDefaultTemplate,
-    Exc7 = MatrixDefaultTemplate,
-    Exc8 = MatrixDefaultTemplate,
-    Exc9 = MatrixDefaultTemplate,
-    Exc10 = MatrixDefaultTemplate
+    Exc1 = list("", "", MatrixDefaultTemplate),
+    Exc2 = list("", "", MatrixDefaultTemplate),
+    Exc3 = list("", "", MatrixDefaultTemplate),
+    Exc4 = list("", "", MatrixDefaultTemplate),
+    Exc5 = list("", "", MatrixDefaultTemplate),
+    Exc6 = list("", "", MatrixDefaultTemplate),
+    Exc7 = list("", "", MatrixDefaultTemplate),
+    Exc8 = list("", "", MatrixDefaultTemplate),
+    Exc9 = list("", "", MatrixDefaultTemplate),
+    Exc10 = list("", "", MatrixDefaultTemplate)
   )
   
   ## Ui output
@@ -413,15 +413,15 @@ server <- function(input, output, session) {
                            shinyMobile::f7BlockHeader(paste("Exercise", ExerciseCounter)),
                            shinyMobile::f7Text(paste0("ExerciseName", ExerciseCounter),
                                                label = "",
-                                               value = "",
+                                               value = CreateNewWorkoutTempSaveState[[paste0("Exc", ExerciseCounter)]][[1]],
                                                placeholder = paste0("Exercise name")),
                            shinyMobile::f7TextArea(paste0("ExerciseInfo", ExerciseCounter),
                                                    label = "",
-                                                   value = "",
+                                                   value = CreateNewWorkoutTempSaveState[[paste0("Exc", ExerciseCounter)]][[2]],
                                                    resize = TRUE,
                                                    placeholder = paste0("Insert exercise details here")),
                            shinyMatrix::matrixInput(paste0("ExerciseMatrix", ExerciseCounter),
-                                                    value = CreateNewWorkoutTempSaveState[[paste0("Exc", ExerciseCounter)]],
+                                                    value = CreateNewWorkoutTempSaveState[[paste0("Exc", ExerciseCounter)]][[3]],
                                                     rows = list(extend = TRUE, delete = TRUE, names = TRUE),
                                                     cols = list(names = TRUE, extend = TRUE, delta = 0)))
                                  
@@ -437,24 +437,65 @@ server <- function(input, output, session) {
     
   })
   
-  ## Save matrix in temp state when inputs updated
+  ## Save exercise data in temp state when inputs updated
   shiny::observe({
 
-    for (i in seq(isolate(CreateNewWorkoutAddExerciseBtn()))) {
+    for (i in seq(CreateNewWorkoutAddExerciseBtn())) {
       
+      # Exercise name store
+      if (is.character(input[[paste0("ExerciseName", i)]])) {
+        
+        CreateNewWorkoutTempSaveState[[paste0("Exc", i)]][[1]] <- input[[paste0("ExerciseName", i)]]
+        
+      }
+      
+      # Exercise info store
+      if (is.character(input[[paste0("ExerciseInfo", i)]])) {
+        
+        CreateNewWorkoutTempSaveState[[paste0("Exc", i)]][[2]] <- input[[paste0("ExerciseInfo", i)]]
+        
+      }
+      
+      # Exercise matrix store
       if (is.matrix(input[[paste0("ExerciseMatrix", i)]])) {
         
-        CreateNewWorkoutTempSaveState[[paste0("Exc", i)]] <- input[[paste0("ExerciseMatrix", i)]]
+        CreateNewWorkoutTempSaveState[[paste0("Exc", i)]][[3]] <- input[[paste0("ExerciseMatrix", i)]]
         
       }
 
     }
+    
+    print(CreateNewWorkoutTempSaveState$Exc2)
 
   })
   
   shiny::observeEvent(input$CreateNewWorkoutSaveBtn, {
     
-    # TODO: Check workout name is unique for user
+    # Check workout name is unique for user
+    UniqueWorkoutNames <- fUniqueWorkoutNames(UserID(), DBCon, Settings) %>%
+      dplyr::pull()
+    
+    if (input$NewWorkoutName %in% UniqueWorkoutNames) {
+      
+      shinyMobile::f7Dialog(id = "CreateNewWorkoutSameWONameAlert",
+                            title = "Workout name not unique",
+                            text = paste("Workout name must be unique.",
+                                         input$NewWorkoutName,
+                                         "is already in use for this user.<br>Please rename."),
+                            type = "alert")
+      
+    } else {
+      
+      # Store new WorkoutType in DB
+      NumberOfExercises <- isolate(CreateNewWorkoutAddExerciseBtn())
+      NewWorkoutTable <- fCreateNewWorkoutTableFormat(isolate(input), UserID(), 
+                                                      NumberOfExercises, Settings)
+      fStoreDataInDB(NewWorkoutTable,
+                     DBTable = Settings$DBTableName$Types,
+                     DBCon = DBCon,
+                     Settings)
+      
+    }
     
   })
   

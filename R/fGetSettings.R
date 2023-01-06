@@ -2,6 +2,9 @@ fGetSettings <- function() {
   
   Settings <- list()
   
+  # Project information -----
+  Settings$ProdMode <- FALSE  # Ensure ProdMode set to TRUE when deploying - this doesn't write to table and prints locally
+  
   # DB information -----
   ## Currently stored in Google Cloud SQL services
   load("Data/Credentials.RData")
