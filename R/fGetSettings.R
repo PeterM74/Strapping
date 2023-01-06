@@ -20,8 +20,9 @@ fGetSettings <- function() {
   
   
   # Aesthetic information -----
-  Settings$ColourTheme = "#673ab7"
-  Settings$TableColNames <- c("Rep", "Kg", "Complete")
+  Settings$ColourTheme <- "#673ab7"
+  Settings$ColourThemeLight <- "#e1d8f1"
+  Settings$TableColNames <- c("Rep", "Kg/Cal", "Complete")
   
   
   

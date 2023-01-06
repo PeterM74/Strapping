@@ -360,12 +360,48 @@ server <- function(input, output, session) {
   
   
   
-  # Create new workout page UI
-  CreateNewWorkoutAddExerciseBtn <- shiny::eventReactive(input$CreateNewWorkoutAddExerciseBtn, {
+  # Create new workout page UI -----
+  ## Add exercise button logic
+  CreateNewWorkoutAddExerciseBtn <- shiny::reactive({
     
-      input$CreateNewWorkoutAddExerciseBtn
+    # Put max workout in place
+    if (is.na(input$CreateNewWorkoutAddExerciseBtn) | is.null(input$CreateNewWorkoutAddExerciseBtn) | input$CreateNewWorkoutAddExerciseBtn == 0) {
+      
+      1
+      
+    } else if (input$CreateNewWorkoutAddExerciseBtn >= 10) {
+      
+      shinyMobile::f7Toast("Maximum of 10 exercises allowed!",
+                           position = "bottom",
+                           closeButtonColor = Settings$ColourThemeLight,
+                           closeTimeout = 10000)
+      10
+      
+    } else {
+      
+      input$CreateNewWorkoutAddExerciseBtn + 1
+      
+    }
     
   })
+  
+  ## Stored values for exercises
+  MatrixDefaultTemplate <- matrix("", nrow = 3, ncol = 2, byrow = TRUE,
+                                  dimnames = list(1:3, Settings$TableColNames[1:2]))
+  CreateNewWorkoutTempSaveState <- shiny::reactiveValues(
+    Exc1 = MatrixDefaultTemplate,
+    Exc2 = MatrixDefaultTemplate,
+    Exc3 = MatrixDefaultTemplate,
+    Exc4 = MatrixDefaultTemplate,
+    Exc5 = MatrixDefaultTemplate,
+    Exc6 = MatrixDefaultTemplate,
+    Exc7 = MatrixDefaultTemplate,
+    Exc8 = MatrixDefaultTemplate,
+    Exc9 = MatrixDefaultTemplate,
+    Exc10 = MatrixDefaultTemplate
+  )
+  
+  ## Ui output
   output$NewWorkoutPageUI <- shiny::renderUI({
     
     # Create inputs
@@ -385,8 +421,7 @@ server <- function(input, output, session) {
                                                    resize = TRUE,
                                                    placeholder = paste0("Insert exercise details here")),
                            shinyMatrix::matrixInput(paste0("ExerciseMatrix", ExerciseCounter),
-                                                    value = matrix("", nrow = 3, ncol = 2, byrow = TRUE,
-                                                                   dimnames = list(1:3, Settings$TableColNames[1:2])),
+                                                    value = CreateNewWorkoutTempSaveState[[paste0("Exc", ExerciseCounter)]],
                                                     rows = list(extend = TRUE, delete = TRUE, names = TRUE),
                                                     cols = list(names = TRUE, extend = TRUE, delta = 0)))
                                  
@@ -400,6 +435,21 @@ server <- function(input, output, session) {
       
     )
     
+  })
+  
+  ## Save matrix in temp state when inputs updated
+  shiny::observe({
+
+    for (i in seq(isolate(CreateNewWorkoutAddExerciseBtn()))) {
+      
+      if (is.matrix(input[[paste0("ExerciseMatrix", i)]])) {
+        
+        CreateNewWorkoutTempSaveState[[paste0("Exc", i)]] <- input[[paste0("ExerciseMatrix", i)]]
+        
+      }
+
+    }
+
   })
   
   shiny::observeEvent(input$CreateNewWorkoutSaveBtn, {
